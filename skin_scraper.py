@@ -22,7 +22,7 @@ def get_csgoempire():
     element = WebDriverWait(driver, 10).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, ".mr-4 > .toggle")))
     element.click()
     try:
-        WebDriverWait(driver, 20).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "div.item:nth-child(6) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > span:nth-child(2)")))
+        WebDriverWait(driver, 50).until(expected_conditions.presence_of_element_located((By.CSS_SELECTOR, "div.item:nth-child(6) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > span:nth-child(2)")))
     except:
         print("Nothing listed right now")
     get_csgoempire_withdraw_items(driver)
@@ -33,24 +33,29 @@ def get_csgoempire_withdraw_items(driver):
     price = driver.find_elements(By.XPATH, "//span[@class='text-xxs font-bold text-light-grey-1']")
     #get_steam(weapon,name,wear)
     for i in range(0,len(name)):
-        print(wear[i].text,end=" ")
-        print(name[i].text,end=" ")
-        print(price[i].text)
+        wear1=wear[i].text.title()
+        print(wear1,end=" ")
+        print(name[i].text)
+        print(get_steam(name[i].text,wear1))
 
 def get_steam_weapon(weapon,name,wear):
-    json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+weapon+"%20%7C%20"+name+"%20%28"+wear+"%29&currency=1"
+    json_link="https://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+weapon+"%20%7C%20"+name+"%20%28"+wear+"%29&currency=1"
+    json_link=json_link.replace(" ","%20")
+    print(json_link)
     data=requests.get(json_link).json()
-    return (data)
+    return data
 
 def get_steam_knife(weapon,name,wear):
     json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+weapon+"%20%7C%20"+name+"%20%28"+wear+"%29&currency=1"
+    json_link=json_link.replace(" ","%20")
     data=requests.get(json_link).json()
-    return (data)
+    return data
 
 def get_steam_pin(name):
     json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+name+"&currency=1"
+    json_link=json_link.replace(" ","%20")
     data=requests.get(json_link).json()
-    return (data)
+    return data
 
 def get_steam_sticker(name,tour,qual):
     if qual!="":
@@ -59,7 +64,6 @@ def get_steam_sticker(name,tour,qual):
         tour="%7C"+tour
     json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name=Sticker%20%7C%20"+name+qual+tour+"&currency=1"
     json_link=json_link.replace(" ","%20")
-    print(json_link)
     data=requests.get(json_link).json()
     return data
 
@@ -75,8 +79,18 @@ def get_steam(name,wear):
         else:
             return get_steam_sticker(name,'',wear)
     
-    #elif 
+    elif "Knife" in name:
+        return get_steam_knife(name)
+    
+    else:
+        arr=name.split("\n")
+        if "|" in wear:
+            arr2=wear.split(" | ")
+            wear_float=arr2[1]
+            return get_steam_weapon(arr[0],arr[1],arr2[0])
+        else:
+            return get_steam_weapon(arr[0],arr[1],wear)
 
-print(get_steam('Sticker\nHowling Dawn',''))
+#print(get_steam('Sticker\nHowling Dawn',''))
 
-#get_csgoempire()
+get_csgoempire()
