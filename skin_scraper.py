@@ -1,18 +1,27 @@
 import time
-import json,requests
+import json,requests,re
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-def get_csgoempire():
-    driver = webdriver.Firefox()
+
+def setup_driver():
+    options = Options()
+    options.headless = True
+    driver = webdriver.Firefox(options=options)
     driver.get("https://csgoempire.com/withdraw#730")
     driver.set_window_size(942, 695)
-    
+    return driver
+
+def get_csgoempire(driver):
+    driver=driver
+
     # js to remove chat element to save resources
     js_string = """const elements = document.getElementsByClassName("chat h-full z-30 chat--open");
     while (elements.length > 0) elements[0].remove();
@@ -27,18 +36,36 @@ def get_csgoempire():
         print("Nothing listed right now")
     get_csgoempire_withdraw_items(driver)
 
+    return driver
+
 def get_csgoempire_withdraw_items(driver):
     wear = driver.find_elements(By.XPATH, "//div[@class='item__head flex items-end']")
     name = driver.find_elements(By.XPATH, "//div[@class='px-2']")
     price = driver.find_elements(By.XPATH, "//span[@class='text-xxs font-bold text-light-grey-1']")
     #get_steam(weapon,name,wear)
     for i in range(0,len(name)):
-        wear1=wear[i].text.title()
-        print(wear1,end=" ")
-        print(name[i].text)
-        print(get_steam(name[i].text,wear1))
+        try:
+            wear1=wear[i].text.title()
+        except StaleElementReferenceException:
+            continue
+        try:
+            steam_price=float(get_steam(name[i].text,wear1)['lowest_price'].strip('$'))
+        except (KeyError,TypeError):
+            continue        
+        em_coins=float(price[i].text)
+        if(profit(em_coins,steam_price)):
+            print("Buy now!!!!!",name[i].text.replace("\n"," "))
+        try:
+            fv=float(re.findall('~0\.\d+',wear1)[0].strip('~'))
+        except IndexError:
+            fv=0
+        if (fv!=0 and gud_float(fv)):
+            print("This float is good: ", fv)
+    driver.refresh()
+
 
 def get_steam_weapon(weapon,name,wear):
+    print(weapon,name,wear)
     json_link="https://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+weapon+"%20%7C%20"+name+"%20%28"+wear+"%29&currency=1"
     json_link=json_link.replace(" ","%20")
     print(json_link)
@@ -52,6 +79,7 @@ def get_steam_knife(weapon,name,wear):
     return data
 
 def get_steam_pin(name):
+    print(name)
     json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name="+name+"&currency=1"
     json_link=json_link.replace(" ","%20")
     data=requests.get(json_link).json()
@@ -62,6 +90,7 @@ def get_steam_sticker(name,tour,qual):
         qual="%20%28"+qual+"%29%20"
     if tour!="":
         tour="%7C"+tour
+    print(name,qual,tour)
     json_link="http://steamcommunity.com/market/priceoverview/?appid=730&market_hash_name=Sticker%20%7C%20"+name+qual+tour+"&currency=1"
     json_link=json_link.replace(" ","%20")
     data=requests.get(json_link).json()
@@ -79,8 +108,8 @@ def get_steam(name,wear):
         else:
             return get_steam_sticker(name,'',wear)
     
-    elif "Knife" in name:
-        return get_steam_knife(name)
+    # elif "Knife" in name:
+    #     return get_steam_knife(name)
     
     else:
         arr=name.split("\n")
@@ -90,7 +119,29 @@ def get_steam(name,wear):
             return get_steam_weapon(arr[0],arr[1],arr2[0])
         else:
             return get_steam_weapon(arr[0],arr[1],wear)
+    time.sleep(0.5)
+
+def gud_float(fv):
+    if 0.20>fv>0.15 or 0.07<fv<0.11 or fv<0.05:
+        return True
+
+def profit(em_coins,steam_price):
+    if em_coins<steam_price:
+        return True
+
 
 #print(get_steam('Sticker\nHowling Dawn',''))
 
-get_csgoempire()
+
+def main():
+    driver=setup_driver()
+    try:
+        while(True):
+            get_csgoempire(driver)
+            time.sleep(5)
+    except KeyboardInterrupt:
+        driver.quit()
+    finally:
+        driver.quit()
+
+main()
